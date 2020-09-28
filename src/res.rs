@@ -1,11 +1,14 @@
 //! Shareable resources.
 
-#[cfg(feature = "arc")]
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 #[cfg(not(feature = "arc"))]
 use std::{
   cell::{Ref, RefCell, RefMut},
   rc::Rc,
+};
+#[cfg(feature = "arc")]
+use {
+  atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut},
+  std::sync::Arc,
 };
 
 /// Shareable resource type.
@@ -16,7 +19,7 @@ use std::{
 pub struct Res<T>(ResInner<T>);
 
 #[cfg(feature = "arc")]
-type ResInner<T> = Arc<RwLock<T>>;
+type ResInner<T> = Arc<AtomicRefCell<T>>;
 
 #[cfg(not(feature = "arc"))]
 type ResInner<T> = Rc<RefCell<T>>;
@@ -31,17 +34,17 @@ impl<T> Clone for Res<T> {
 impl<T> Res<T> {
   /// Wrap a value in a shareable resource.
   pub fn new(t: T) -> Self {
-    Res(Arc::new(RwLock::new(t)))
+    Res(Arc::new(AtomicRefCell::new(t)))
   }
 
   /// Borrow a resource for as long as the return value lives.
-  pub fn borrow(&self) -> RwLockReadGuard<T> {
-    self.0.read().unwrap()
+  pub fn borrow(&self) -> AtomicRef<T> {
+    self.0.borrow()
   }
 
   /// Mutably borrow a resource for as long as the return value lives.
-  pub fn borrow_mut(&self) -> RwLockWriteGuard<T> {
-    self.0.write().unwrap()
+  pub fn borrow_mut(&self) -> AtomicRefMut<T> {
+    self.0.borrow_mut()
   }
 }
 
