@@ -6,14 +6,21 @@ use tempfile::Builder;
 use warmy::{Inspect, Load, Loaded, Res, SimpleKey, Storage, Store};
 
 fn with_tmp_dir<F, B>(f: F)
-where F: Fn(&Path) -> B {
-  let tmp_dir = Builder::new().prefix("warmy").tempdir().expect("create temporary directory");
+where
+  F: Fn(&Path) -> B,
+{
+  let tmp_dir = Builder::new()
+    .prefix("warmy")
+    .tempdir()
+    .expect("create temporary directory");
   let _ = f(tmp_dir.path());
   tmp_dir.close().expect("close the temporary directory");
 }
 
 fn with_store<F, B, C>(f: F)
-where F: Fn(Store<C, SimpleKey>) -> B {
+where
+  F: Fn(Store<C, SimpleKey>) -> B,
+{
   with_tmp_dir(|tmp_dir| {
     let opt = warmy::StoreOpt::default().set_root(tmp_dir.to_owned());
 
@@ -30,13 +37,13 @@ struct Foo(String);
 
 #[derive(Debug, Eq, PartialEq)]
 enum TestErr {
-  WrongKey(SimpleKey)
+  WrongKey(SimpleKey),
 }
 
 impl fmt::Display for TestErr {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
-      TestErr::WrongKey(ref key) => write!(f, "wrong key: {}", key)
+      TestErr::WrongKey(ref key) => write!(f, "wrong key: {}", key),
     }
   }
 }
@@ -44,7 +51,11 @@ impl fmt::Display for TestErr {
 impl<C> Load<C, SimpleKey> for Foo {
   type Error = TestErr;
 
-  fn load(key: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    key: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
     if let SimpleKey::Path(ref key) = key {
       let mut s = String::new();
 
@@ -64,6 +75,36 @@ impl<C> Load<C, SimpleKey> for Foo {
   }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+struct Baz(String);
+
+impl<C> Load<C, SimpleKey> for Baz {
+  type Error = TestErr;
+
+  fn load(
+    key: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+    if let SimpleKey::Path(ref key) = key {
+      let mut s = String::new();
+
+      {
+        let path = key.as_path();
+        eprintln!("KEY: {}", path.display());
+        let mut fh = File::open(path).unwrap();
+        let _ = fh.read_to_string(&mut s);
+      }
+
+      let foo = Baz(s);
+
+      Ok(foo.into())
+    } else {
+      Err(TestErr::WrongKey(key))
+    }
+  }
+}
+
 // This struct has a Load implementation that is const: it doesn’t load anything from the file.
 struct Stupid;
 
@@ -72,7 +113,11 @@ struct Stupid;
 impl<C> Load<C, SimpleKey, Stupid> for Foo {
   type Error = TestErr;
 
-  fn load(_: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    _: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
     eprintln!("hello");
     let foo = Foo("stupid".to_owned());
     Ok(foo.into())
@@ -85,7 +130,11 @@ struct Bar(String);
 impl<C> Load<C, SimpleKey> for Bar {
   type Error = TestErr;
 
-  fn load(_: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    _: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
     let bar = Bar("bar".to_owned());
     Ok(bar.into())
   }
@@ -97,7 +146,11 @@ struct Zoo(String);
 impl<C> Load<C, SimpleKey> for Zoo {
   type Error = TestErr;
 
-  fn load(key: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    key: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
     if let SimpleKey::Logical(key) = key {
       let content = key.as_str().to_owned();
       let zoo = Zoo(content);
@@ -159,7 +212,12 @@ fn witness_sync() {
       .get(&key, ctx)
       .expect("object should be present at the given key");
 
+    let s: Res<Baz> = store
+      .get(&key, ctx)
+      .expect("object should be present at the given key");
+
     assert_eq!(r.borrow().0, expected1);
+    assert_eq!(s.borrow().0, expected1);
 
     {
       let mut fh = File::create(&path).unwrap();
@@ -170,7 +228,8 @@ fn witness_sync() {
     loop {
       store.sync(ctx);
 
-      if r.borrow().0.as_str() == expected2.as_str() {
+      if r.borrow().0.as_str() == expected2.as_str() && s.borrow().0.as_str() == expected2.as_str()
+      {
         break;
       }
 
@@ -233,20 +292,20 @@ fn two_same_paths_diff_types() {
   with_store(|mut store| {
     let ctx = &mut ();
     let foo_key: SimpleKey = Path::new("a.txt").into();
-    let bar_key = foo_key.clone();
+    let baz_key = foo_key.clone();
     let path = store.root().join("a.txt");
 
     // create a.txt
     {
       let mut fh = File::create(&path).unwrap();
-      let _ = fh.write_all(&b"foobarzoo"[..]);
+      let _ = fh.write_all(&b"foobazzoo"[..]);
     }
 
     let foo: Res<Foo> = store.get(&foo_key, ctx).unwrap();
-    assert_eq!(foo.borrow().0.as_str(), "foobarzoo");
+    assert_eq!(foo.borrow().0.as_str(), "foobazzoo");
 
-    let bar: Result<Res<Bar>, _> = store.get(&bar_key, ctx);
-    assert!(bar.is_err());
+    let baz: Res<Baz> = store.get(&baz_key, ctx).unwrap();
+    assert_eq!(baz.borrow().0.as_str(), "foobazzoo");
   })
 }
 
@@ -310,14 +369,14 @@ fn logical_with_deps() {
 #[derive(Debug, Eq, PartialEq)]
 struct Ctx {
   foo_nb: u32,
-  pew_nb: u32
+  pew_nb: u32,
 }
 
 impl Ctx {
   fn new() -> Self {
     Ctx {
       foo_nb: 0,
-      pew_nb: 0
+      pew_nb: 0,
     }
   }
 }
@@ -331,15 +390,17 @@ impl<'a> Inspect<'a, Ctx, &'a mut u32> for FooWithCtx {
   }
 }
 
-impl<C> Load<C, SimpleKey> for FooWithCtx where Self: for<'a> Inspect<'a, C, &'a mut u32> {
+impl<C> Load<C, SimpleKey> for FooWithCtx
+where
+  Self: for<'a> Inspect<'a, C, &'a mut u32>,
+{
   type Error = TestErr;
 
   fn load(
     key: SimpleKey,
     storage: &mut Storage<C, SimpleKey>,
     ctx: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
-  {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
     // load as if it was a Foo
     let Loaded { res, deps } = <Foo as Load<_, _, ()>>::load(key, storage, ctx)?;
 
@@ -361,8 +422,10 @@ impl<'a> Inspect<'a, Ctx, &'a mut u32> for Pew {
 }
 
 impl<C> Load<C, SimpleKey> for Pew
-where Self: for<'a> Inspect<'a, C, &'a mut u32>,
-      FooWithCtx: for<'a> Inspect<'a, C, &'a mut u32> {
+where
+  Self: for<'a> Inspect<'a, C, &'a mut u32>,
+  FooWithCtx: for<'a> Inspect<'a, C, &'a mut u32>,
+{
   type Error = TestErr;
 
   fn load(
