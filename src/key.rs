@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 use crate::res::Res;
 
 /// Class of recognized keys.
-pub trait Key: 'static + Clone + Eq + Hash {
+pub trait Key: 'static + Clone + Eq + Hash + Send + Sync {
     /// Prepare a key.
     ///
     /// If your key is akin to a file system key, it’s very likely you need to substitute its VFS path

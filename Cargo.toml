@@ -27,7 +27,7 @@ ron-impl = ["serde", "ron"]
 toml-impl = ["serde", "toml"]
 
 [dependencies]
-any-cache = "0.2"
+any-cache = { path = "any-cache" }
 notify = "4.0.3"
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }

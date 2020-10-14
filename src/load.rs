@@ -9,7 +9,10 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::{
+    mpsc::{channel, Receiver},
+    Mutex,
+};
 use std::time::Duration;
 
 use crate::key::{Key, PrivateKey};
@@ -32,7 +35,7 @@ use crate::res::Res;
 /// algorithms to load the same type with different methods.
 ///
 /// [`SimpleKey`]: crate::key::SimpleKey
-pub trait Load<C, K, Method = ()>: 'static + Sized
+pub trait Load<C, K, Method = ()>: 'static + Sized + Send + Sync
 where
     K: Key,
     Method: ?Sized,
@@ -103,13 +106,14 @@ impl<T, K> From<T> for Loaded<T, K> {
 /// Metadata about a resource.
 struct ResMetaData<C, K> {
     /// Function to call each time the resource must be reloaded.
-    on_reload: Box<dyn Fn(&mut Storage<C, K>, &mut C) -> Result<(), Box<dyn Display>>>,
+    on_reload:
+        Box<dyn Fn(&mut Storage<C, K>, &mut C) -> Result<(), Box<dyn Display>> + Send + Sync>,
 }
 
 impl<C, K> ResMetaData<C, K> {
     fn new<F>(f: F) -> Self
     where
-        F: 'static + Fn(&mut Storage<C, K>, &mut C) -> Result<(), Box<dyn Display>>,
+        F: 'static + Fn(&mut Storage<C, K>, &mut C) -> Result<(), Box<dyn Display>> + Send + Sync,
     {
         ResMetaData {
             on_reload: Box::new(f),
@@ -397,7 +401,7 @@ struct Synchronizer<C, K> {
     #[allow(dead_code)]
     watcher: RecommendedWatcher,
     // watcher receiver part of the channel
-    watcher_rx: Receiver<DebouncedEvent>,
+    watcher_rx: Mutex<Receiver<DebouncedEvent>>,
     // used to accept or ignore new discoveries
     discovery: Discovery<C, K>,
 }
@@ -414,7 +418,7 @@ where
         Synchronizer {
             dirties: HashSet::new(),
             watcher,
-            watcher_rx,
+            watcher_rx: Mutex::new(watcher_rx),
             discovery,
         }
     }
@@ -424,7 +428,7 @@ where
     where
         K: for<'a> From<&'a Path>,
     {
-        for event in self.watcher_rx.try_iter() {
+        for event in self.watcher_rx.lock().unwrap().try_iter() {
             match event {
                 DebouncedEvent::Write(ref path) | DebouncedEvent::Create(ref path) => {
                     let key = path.as_path().into();
@@ -641,7 +645,7 @@ impl<C, K> StoreOpt<C, K> {
 ///
 /// If you don’t care about discovering new resources, feel free to use the [`Default`] implementation.
 pub struct Discovery<C, K> {
-    closure: Box<dyn FnMut(&Path, &mut Storage<C, K>, &mut C)>,
+    closure: Box<dyn FnMut(&Path, &mut Storage<C, K>, &mut C) + Send + Sync>,
 }
 
 impl<C, K> Discovery<C, K> {
@@ -657,7 +661,7 @@ impl<C, K> Discovery<C, K> {
     /// [`get`]: crate::load::Storage::get
     pub fn new<F>(f: F) -> Self
     where
-        F: 'static + FnMut(&Path, &mut Storage<C, K>, &mut C),
+        F: 'static + FnMut(&Path, &mut Storage<C, K>, &mut C) + Send + Sync,
     {
         Discovery {
             closure: Box::new(f),

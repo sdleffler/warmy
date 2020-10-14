@@ -47,7 +47,7 @@ impl fmt::Display for JsonError {
 impl<C, K, T> Load<C, K, Json> for T
 where
     K: Key + Into<Option<PathBuf>>,
-    T: 'static + for<'de> Deserialize<'de>,
+    T: 'static + for<'de> Deserialize<'de> + Send + Sync,
 {
     type Error = JsonError;
 
