@@ -24,45 +24,45 @@ pub struct Ron;
 /// Possible error that might occur while loading and reloading RON formatted scarce resources.
 #[derive(Debug)]
 pub enum RonError {
-  /// An error in [ron](https://crates.io/crates/ron).
-  RonError(de::Error),
-  /// The file specified by the key failed to open or could not be read.
-  CannotReadFile(PathBuf, io::Error),
-  /// The input key doesn’t provide enough information to open a file.
-  NoKey,
+    /// An error in [ron](https://crates.io/crates/ron).
+    RonError(de::Error),
+    /// The file specified by the key failed to open or could not be read.
+    CannotReadFile(PathBuf, io::Error),
+    /// The input key doesn’t provide enough information to open a file.
+    NoKey,
 }
 
 impl fmt::Display for RonError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    match *self {
-      RonError::RonError(ref e) => write!(f, "RON error: {}", e),
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            RonError::RonError(ref e) => write!(f, "RON error: {}", e),
 
-      RonError::CannotReadFile(ref path, ref e) => {
-        write!(f, "cannot read file {}: {}", path.display(), e)
-      }
+            RonError::CannotReadFile(ref path, ref e) => {
+                write!(f, "cannot read file {}: {}", path.display(), e)
+            }
 
-      RonError::NoKey => f.write_str("no path key available"),
+            RonError::NoKey => f.write_str("no path key available"),
+        }
     }
-  }
 }
 
 impl<C, K, T> Load<C, K, Ron> for T
 where
-  K: Key + Into<Option<PathBuf>>,
-  T: 'static + for<'de> Deserialize<'de>,
+    K: Key + Into<Option<PathBuf>>,
+    T: 'static + for<'de> Deserialize<'de>,
 {
-  type Error = RonError;
+    type Error = RonError;
 
-  fn load(key: K, _: &mut Storage<C, K>, _: &mut C) -> Result<Loaded<Self, K>, Self::Error> {
-    if let Some(path) = key.into() {
-      let file_content =
-        read_to_string(&path).map_err(|ioerr| RonError::CannotReadFile(path, ioerr))?;
+    fn load(key: K, _: &mut Storage<C, K>, _: &mut C) -> Result<Loaded<Self, K>, Self::Error> {
+        if let Some(path) = key.into() {
+            let file_content =
+                read_to_string(&path).map_err(|ioerr| RonError::CannotReadFile(path, ioerr))?;
 
-      from_str(&file_content)
-        .map(Loaded::without_dep)
-        .map_err(RonError::RonError)
-    } else {
-      Err(RonError::NoKey)
+            from_str(&file_content)
+                .map(Loaded::without_dep)
+                .map_err(RonError::RonError)
+        } else {
+            Err(RonError::NoKey)
+        }
     }
-  }
 }

@@ -92,27 +92,27 @@
 ///
 /// [`BorrowMut`]: std::borrow::BorrowMut
 pub trait Inspect<'a, Ctx, Inspected, Method = ()> {
-  /// Inspect the context.
-  fn inspect(ctx: &'a mut Ctx) -> Inspected;
+    /// Inspect the context.
+    fn inspect(ctx: &'a mut Ctx) -> Inspected;
 }
 
 /// No-context universal implementor.
 impl<'a, T, C, M> Inspect<'a, C, (), M> for T {
-  fn inspect(_: &'a mut C) -> () {
-    ()
-  }
+    fn inspect(_: &'a mut C) -> () {
+        ()
+    }
 }
 
 /// Immutable full-context universal implementator.
 impl<'a, T, C, M> Inspect<'a, C, &'a C, M> for T {
-  fn inspect(ctx: &'a mut C) -> &'a C {
-    ctx
-  }
+    fn inspect(ctx: &'a mut C) -> &'a C {
+        ctx
+    }
 }
 
 /// Mutable full-context universal implementator.
 impl<'a, T, C, M> Inspect<'a, C, &'a mut C, M> for T {
-  fn inspect(ctx: &'a mut C) -> &'a mut C {
-    ctx
-  }
+    fn inspect(ctx: &'a mut C) -> &'a mut C {
+        ctx
+    }
 }

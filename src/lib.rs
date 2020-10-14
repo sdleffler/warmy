@@ -587,6 +587,6 @@ pub mod toml;
 pub use crate::context::Inspect;
 pub use crate::key::{Key, SimpleKey};
 pub use crate::load::{
-  Discovery, Load, Loaded, Storage, Store, StoreError, StoreErrorOr, StoreOpt,
+    Discovery, Load, Loaded, Storage, Store, StoreError, StoreErrorOr, StoreOpt,
 };
 pub use crate::res::Res;
