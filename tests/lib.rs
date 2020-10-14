@@ -6,9 +6,7 @@ use tempfile::Builder;
 use warmy::{Inspect, Load, Loaded, Res, SimpleKey, Storage, Store};
 
 fn with_tmp_dir<F, B>(f: F)
-where
-  F: Fn(&Path) -> B,
-{
+where F: Fn(&Path) -> B {
   let tmp_dir = Builder::new()
     .prefix("warmy")
     .tempdir()
@@ -18,9 +16,7 @@ where
 }
 
 fn with_store<F, B, C>(f: F)
-where
-  F: Fn(Store<C, SimpleKey>) -> B,
-{
+where F: Fn(Store<C, SimpleKey>) -> B {
   with_tmp_dir(|tmp_dir| {
     let opt = warmy::StoreOpt::default().set_root(tmp_dir.to_owned());
 
@@ -55,7 +51,8 @@ impl<C> Load<C, SimpleKey> for Foo {
     key: SimpleKey,
     _: &mut Storage<C, SimpleKey>,
     _: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     if let SimpleKey::Path(ref key) = key {
       let mut s = String::new();
 
@@ -85,7 +82,8 @@ impl<C> Load<C, SimpleKey> for Baz {
     key: SimpleKey,
     _: &mut Storage<C, SimpleKey>,
     _: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     if let SimpleKey::Path(ref key) = key {
       let mut s = String::new();
 
@@ -117,7 +115,8 @@ impl<C> Load<C, SimpleKey, Stupid> for Foo {
     _: SimpleKey,
     _: &mut Storage<C, SimpleKey>,
     _: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     eprintln!("hello");
     let foo = Foo("stupid".to_owned());
     Ok(foo.into())
@@ -134,7 +133,8 @@ impl<C> Load<C, SimpleKey> for Bar {
     _: SimpleKey,
     _: &mut Storage<C, SimpleKey>,
     _: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     let bar = Bar("bar".to_owned());
     Ok(bar.into())
   }
@@ -150,7 +150,8 @@ impl<C> Load<C, SimpleKey> for Zoo {
     key: SimpleKey,
     _: &mut Storage<C, SimpleKey>,
     _: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     if let SimpleKey::Logical(key) = key {
       let content = key.as_str().to_owned();
       let zoo = Zoo(content);
@@ -172,7 +173,8 @@ impl<C> Load<C, SimpleKey> for LogicalFoo {
     key: SimpleKey,
     storage: &mut Storage<C, SimpleKey>,
     ctx: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     if let SimpleKey::Logical(key) = key {
       let fs_key = Path::new(&key).into();
       let foo: Res<Foo> = storage.get(&fs_key, ctx).unwrap();
@@ -391,8 +393,7 @@ impl<'a> Inspect<'a, Ctx, &'a mut u32> for FooWithCtx {
 }
 
 impl<C> Load<C, SimpleKey> for FooWithCtx
-where
-  Self: for<'a> Inspect<'a, C, &'a mut u32>,
+where Self: for<'a> Inspect<'a, C, &'a mut u32>
 {
   type Error = TestErr;
 
@@ -400,7 +401,8 @@ where
     key: SimpleKey,
     storage: &mut Storage<C, SimpleKey>,
     ctx: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     // load as if it was a Foo
     let Loaded { res, deps } = <Foo as Load<_, _, ()>>::load(key, storage, ctx)?;
 
@@ -432,7 +434,8 @@ where
     _: SimpleKey,
     _: &mut Storage<C, SimpleKey>,
     ctx: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     // for the sake of the teste, just tap another resource as well
     *FooWithCtx::inspect(ctx) += 1;
 

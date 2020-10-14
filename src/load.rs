@@ -35,8 +35,7 @@ use crate::res::Res;
 pub trait Load<C, K, Method = ()>: 'static + Sized
 where
   K: Key,
-  Method: ?Sized,
-{
+  Method: ?Sized, {
   /// Type of error that might happen while loading.
   type Error: Display + 'static;
 
@@ -100,9 +99,7 @@ struct ResMetaData<C, K> {
 
 impl<C, K> ResMetaData<C, K> {
   fn new<F>(f: F) -> Self
-  where
-    F: 'static + Fn(&mut Storage<C, K>, &mut C) -> Result<(), Box<dyn Display>>,
-  {
+  where F: 'static + Fn(&mut Storage<C, K>, &mut C) -> Result<(), Box<dyn Display>> {
     ResMetaData {
       on_reload: Box::new(f),
     }
@@ -125,8 +122,7 @@ pub struct Storage<C, K> {
 }
 
 impl<C, K> Storage<C, K>
-where
-  K: Key,
+where K: Key
 {
   fn new(canon_root: PathBuf) -> Self {
     Storage {
@@ -147,9 +143,7 @@ where
   /// The resource might be refused for several reasons. Further information in the documentation of
   /// the [`StoreError`] error type.
   fn inject<T, M>(&mut self, key: K, resource: T, deps: Vec<K>) -> Result<Res<T>, StoreError<K>>
-  where
-    T: Load<C, K, M>,
-  {
+  where T: Load<C, K, M> {
     // // we forbid having two resources sharing the same key
     // if self.metadata.contains_key(&key) {
     //   return Err(StoreError::AlreadyRegisteredKey(key.clone()));
@@ -205,9 +199,7 @@ where
   ///
   /// This function uses the default loading method.
   pub fn get<T>(&mut self, key: &K, ctx: &mut C) -> Result<Res<T>, StoreErrorOr<T, C, K>>
-  where
-    T: Load<C, K>,
-  {
+  where T: Load<C, K> {
     self.get_by(key, ctx, ())
   }
 
@@ -293,8 +285,7 @@ pub enum StoreError<K> {
 }
 
 impl<K> Display for StoreError<K>
-where
-  K: Display,
+where K: Display
 {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
@@ -308,8 +299,7 @@ where
 pub enum StoreErrorOr<T, C, K, M = ()>
 where
   T: Load<C, K, M>,
-  K: Key,
-{
+  K: Key, {
   /// A store error.
   StoreError(StoreError<K>),
   /// A resource error.
@@ -398,14 +388,14 @@ struct Synchronizer<C, K> {
 }
 
 impl<C, K> Synchronizer<C, K>
-where
-  K: Key,
+where K: Key
 {
   fn new(
     watcher: RecommendedWatcher,
     watcher_rx: Receiver<DebouncedEvent>,
     discovery: Discovery<C, K>,
-  ) -> Self {
+  ) -> Self
+  {
     Synchronizer {
       dirties: HashSet::new(),
       watcher,
@@ -416,9 +406,7 @@ where
 
   /// Dequeue any file system events.
   fn dequeue_fs_events(&mut self, storage: &mut Storage<C, K>, ctx: &mut C)
-  where
-    K: for<'a> From<&'a Path>,
-  {
+  where K: for<'a> From<&'a Path> {
     for event in self.watcher_rx.try_iter() {
       match event {
         DebouncedEvent::Write(ref path) | DebouncedEvent::Create(ref path) => {
@@ -471,9 +459,7 @@ where
 
   /// Synchronize the [`Storage`] by updating the resources that ought to.
   fn sync(&mut self, storage: &mut Storage<C, K>, ctx: &mut C)
-  where
-    K: for<'a> From<&'a Path>,
-  {
+  where K: for<'a> From<&'a Path> {
     self.dequeue_fs_events(storage, ctx);
     self.reload_dirties(storage, ctx);
   }
@@ -486,8 +472,7 @@ pub struct Store<C, K> {
 }
 
 impl<C, K> Store<C, K>
-where
-  K: Key,
+where K: Key
 {
   /// Create a new store.
   ///
@@ -525,9 +510,7 @@ where
 
   /// Synchronize the [`Store`] by updating the resources that ought to with a provided context.
   pub fn sync(&mut self, ctx: &mut C)
-  where
-    K: for<'a> From<&'a Path>,
-  {
+  where K: for<'a> From<&'a Path> {
     self.synchronizer.sync(&mut self.storage, ctx);
   }
 }
@@ -597,9 +580,7 @@ impl<C, K> StoreOpt<C, K> {
   /// Defaults to `"."`.
   #[inline]
   pub fn set_root<P>(self, root: P) -> Self
-  where
-    P: AsRef<Path>,
-  {
+  where P: AsRef<Path> {
     StoreOpt {
       root: root.as_ref().to_owned(),
       ..self
@@ -651,9 +632,7 @@ impl<C, K> Discovery<C, K> {
   ///
   /// [`get`]: crate::load::Storage::get
   pub fn new<F>(f: F) -> Self
-  where
-    F: 'static + FnMut(&Path, &mut Storage<C, K>, &mut C),
-  {
+  where F: 'static + FnMut(&Path, &mut Storage<C, K>, &mut C) {
     Discovery {
       closure: Box::new(f),
     }
